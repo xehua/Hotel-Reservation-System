@@ -1,0 +1,487 @@
+/* ------------------------------
+   General
+------------------------------ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: Georgia, "Times New Roman", serif;
+  background-color: #f5f1e9;
+  color: #29261f;
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: Garamond, "Times New Roman", serif;
+    font-weight: normal;
+  }
+}
+
+button {
+  font-family: Arial, sans-serif;
+  cursor: pointer;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+
+/* ------------------------------
+   Navigation
+------------------------------ */
+
+.navbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 28px 5%;
+  color: white;
+}
+
+.logo {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 24px;
+  letter-spacing: 4px;
+  font-weight: normal;
+}
+
+.nav-links {
+  display: flex;
+  gap: 32px;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+
+.nav-links a {
+  transition: opacity 0.3s ease;
+}
+
+.nav-links a:hover {
+  opacity: 0.6;
+}
+
+.book-button {
+  background: transparent;
+  color: white;
+  border: 1px solid white;
+  padding: 12px 20px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  transition: all 0.3s ease;
+}
+
+.book-button:hover {
+  background: white;
+  color: #29261f;
+}
+
+
+/* ------------------------------
+   Hero
+------------------------------ */
+
+.hero-section {
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+  color: white;
+
+  background:
+    linear-gradient(
+      rgba(20, 25, 18, 0.35),
+      rgba(20, 25, 18, 0.45)
+    ),
+    url("https://images.unsplash.com/photo-1566073771259-6a8506099945")
+    center / cover no-repeat;
+}
+
+.hero-content {
+  max-width: 800px;
+  padding: 20px;
+}
+
+.small-title,
+.section-label {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  letter-spacing: 4px;
+  margin-bottom: 24px;
+}
+
+.hero-content h1 {
+  font-size: clamp(55px, 8vw, 100px);
+  font-weight: normal;
+  line-height: 0.95;
+  margin-bottom: 30px;
+}
+
+.hero-content p:not(.small-title) {
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  margin-bottom: 35px;
+}
+
+.hero-button {
+  padding: 16px 30px;
+  border: 1px solid white;
+  background: white;
+  color: #29261f;
+
+  font-size: 11px;
+  letter-spacing: 2px;
+
+  transition: all 0.3s ease;
+}
+
+.hero-button:hover {
+  background: transparent;
+  color: white;
+}
+
+
+/* ------------------------------
+   About
+------------------------------ */
+
+.about-section {
+  min-height: 700px;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+
+  gap: 80px;
+  padding: 120px 8%;
+}
+
+.about-text {
+  max-width: 550px;
+}
+
+.about-text h2 {
+  font-size: clamp(40px, 5vw, 65px);
+  font-weight: normal;
+  line-height: 1.05;
+  margin-bottom: 30px;
+}
+
+.about-text p:last-child {
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.9;
+  color: #666158;
+}
+
+.section-label {
+  color: #8c806c;
+}
+
+.about-image {
+  height: 600px;
+}
+
+.about-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+
+/* ------------------------------
+   Rooms
+------------------------------ */
+
+.rooms-section {
+  background-color: #e9e2d5;
+  padding: 120px 6%;
+  text-align: center;
+}
+
+.rooms-section h2 {
+  font-size: clamp(45px, 6vw, 70px);
+  font-weight: normal;
+  margin-bottom: 70px;
+}
+
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+
+  max-width: 1400px;
+  margin: auto;
+}
+
+.room-card {
+  background-color: #f5f1e9;
+  text-align: left;
+}
+
+.room-card img {
+  width: 100%;
+  height: 450px;
+  object-fit: cover;
+  display: block;
+}
+
+.room-info {
+  padding: 30px;
+}
+
+.room-info h3 {
+  font-size: 28px;
+  font-weight: normal;
+  margin-bottom: 12px;
+}
+
+.room-info p {
+  font-family: Arial, sans-serif;
+  color: #706b63;
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 25px;
+}
+
+.room-info button {
+  background: none;
+  border: none;
+  border-bottom: 1px solid #29261f;
+
+  padding-bottom: 6px;
+
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+
+
+/* ------------------------------
+   Booking
+------------------------------ */
+
+.booking-section {
+  padding: 120px 6%;
+  background-color: #29261f;
+  color: white;
+}
+
+.booking-content {
+  max-width: 1200px;
+  margin: auto;
+}
+
+.booking-section h2 {
+  font-size: clamp(45px, 6vw, 70px);
+  font-weight: normal;
+  margin-bottom: 60px;
+}
+
+.booking-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 25px;
+  align-items: end;
+}
+
+.booking-form div {
+  display: flex;
+  flex-direction: column;
+}
+
+.booking-form label {
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+
+.booking-form input {
+  background: transparent;
+  color: white;
+
+  border: none;
+  border-bottom: 1px solid #aaa;
+
+  padding: 12px 5px;
+
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+}
+
+.booking-form button {
+  height: 45px;
+
+  background: white;
+  color: #29261f;
+
+  border: 1px solid white;
+
+  padding: 0 25px;
+
+  font-size: 10px;
+  letter-spacing: 2px;
+
+  transition: all 0.3s ease;
+}
+
+.booking-form button:hover {
+  background: transparent;
+  color: white;
+}
+
+
+/* ------------------------------
+   Services
+------------------------------ */
+
+.services-section {
+  padding: 120px 8%;
+  text-align: center;
+}
+
+.services-section h2 {
+  font-size: clamp(45px, 6vw, 70px);
+  font-weight: normal;
+  margin-bottom: 80px;
+}
+
+.services-grid {
+  max-width: 1200px;
+  margin: auto;
+
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+
+  gap: 40px;
+}
+
+.services-grid div {
+  border-top: 1px solid #b7b0a4;
+  padding-top: 25px;
+
+  text-align: left;
+}
+
+.services-grid h3 {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #8c806c;
+  margin-bottom: 30px;
+}
+
+.services-grid h4 {
+  font-size: 25px;
+  font-weight: normal;
+  margin-bottom: 15px;
+}
+
+.services-grid p {
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #706b63;
+}
+
+
+/* ------------------------------
+   Footer
+------------------------------ */
+
+footer {
+  background-color: #1d1c18;
+  color: white;
+
+  text-align: center;
+
+  padding: 100px 20px;
+}
+
+footer h2 {
+  font-size: 45px;
+  font-weight: normal;
+  margin-bottom: 20px;
+}
+
+footer p {
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  color: #aaa;
+  margin-bottom: 15px;
+}
+
+
+/* ------------------------------
+   Mobile
+------------------------------ */
+
+@media (max-width: 900px) {
+
+  .nav-links {
+    display: none;
+  }
+
+  .navbar {
+    padding: 20px 5%;
+  }
+
+  .about-section {
+    grid-template-columns: 1fr;
+    padding: 80px 6%;
+  }
+
+  .about-image {
+    height: 450px;
+  }
+
+  .room-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-form {
+    grid-template-columns: 1fr;
+  }
+
+  .services-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+
+@media (max-width: 550px) {
+
+  .hero-content h1 {
+    font-size: 55px;
+  }
+
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .room-card img {
+    height: 350px;
+  }
+}
