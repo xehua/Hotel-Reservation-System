@@ -1,305 +1,773 @@
+
+/* ==========================================
+   LUMA HOTEL - BACKEND SERVER
+
+   This file connects our React website to
+   the MySQL database.
+
+   It handles customer accounts, room searches,
+   availability, and hotel reservations.
+========================================== */
+
 import express from "express";
 import cors from "cors";
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
+import bcrypt from "bcryptjs";
+
+/* Loads the database settings from .env
+   so we don't put passwords directly in code. */
 
 dotenv.config();
 
 const app = express();
+const PORT = 5001;
 
-app.use(cors({ origin: "http://localhost:5173" }));
+/* Allows our React frontend to communicate
+   with this backend server. */
+
+app.use(
+    cors({
+        origin: "http://localhost:5173"
+    })
+);
+
+/* Allows the backend to read JSON data
+   sent from the website's forms. */
+
 app.use(express.json({ limit: "16kb" }));
 
-const db = mysql.createPool({
-    host: process.env.DB_HOST,
+
+/* ==========================================
+   MYSQL DATABASE CONNECTION
+
+   Creates a pool of connections so different
+   guests can use the website at the same time.
+========================================== */
+
+const pool = mysql.createPool({
+    host: process.env.DB_HOST || "127.0.0.1",
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    database: process.env.DB_NAME || "hotel_reservation",
+    port: Number(process.env.DB_PORT || 3306),
+    waitForConnections: true,
     connectionLimit: 5,
-    dateStrings: true,
+    queueLimit: 0,
+    connectTimeout: 10000,
+    dateStrings: true
 });
 
-class InputError extends Error {}
 
-// Validate check-in and check-out.
-function checkDates(data) {
-    const { check_in, check_out } = data;
+/* ==========================================
+   INPUT VALIDATION
 
-    function parse(value) {
-        if (
-            typeof value !== "string" ||
-            !/^\d{4}-\d{2}-\d{2}$/.test(value)
-        ) {
-            throw new InputError("Use YYYY-MM-DD for dates.");
-        }
+   These functions help us check information
+   before saving anything to the database.
+========================================== */
 
-        const date = new Date(`${value}T00:00:00Z`);
+/* Custom error used when a guest enters
+   missing or incorrect information. */
 
-        if (
-            !Number.isFinite(date.getTime()) ||
-            date.toISOString().slice(0, 10) !== value
-        ) {
-            throw new InputError("Enter a valid calendar date.");
-        }
-
-        return date;
+class InputError extends Error {
+    constructor(message) {
+        super(message);
+        this.status = 400;
     }
-
-    const start = parse(check_in);
-    const end = parse(check_out);
-
-    const today = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "America/Chicago",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    }).format(new Date());
-
-    const nights = (end - start) / 86400000;
-
-    if (check_in < today) {
-        throw new InputError("Check-in cannot be in the past.");
-    }
-
-    if (nights < 1 || nights > 365) {
-        throw new InputError("Choose a stay of 1–365 nights.");
-    }
-
-    return { check_in, check_out, nights };
 }
 
-// Calculate money using integer cents.
-function totalPrice(price, nights) {
-    const text = String(price);
+/* Removes extra spaces from text fields. */
 
-    if (!/^\d+\.\d{2}$/.test(text)) {
-        throw new Error("Invalid database price.");
-    }
-
-    const [dollars, cents] = text.split(".");
-    const total =
-        (BigInt(dollars) * 100n + BigInt(cents)) * BigInt(nights);
-
-    return `${total / 100n}.${String(total % 100n).padStart(2, "0")}`;
+function cleanText(value) {
+    return typeof value === "string"
+        ? value.trim()
+        : "";
 }
 
-// Check whether Node is running.
-app.get("/api/health", (req, res) => {
-    res.json({ message: "Node backend is running!" });
-});
+/* Makes emails lowercase so different
+   capitalization doesn't create duplicates. */
 
-// Read your existing rooms.
-app.get("/api/rooms", async (req, res) => {
-    const [rooms] = await db.execute(`
-    SELECT room_id, room_number, room_type, price, status
-    FROM Rooms
-    ORDER BY price, room_number
-  `);
+function cleanEmail(value) {
+    return cleanText(value).toLowerCase();
+}
 
-    res.json({ rooms });
-});
+/* Checks whether a value is a real date
+   written in YYYY-MM-DD format. */
 
-// Search rooms available for the requested dates.
-app.get("/api/availability", async (req, res) => {
-    const stay = checkDates(req.query);
+function parseDate(value) {
+    if (
+        typeof value !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(value)
+    ) {
+        throw new InputError(
+            "Please enter a valid date."
+        );
+    }
 
-    const [rooms] = await db.execute(
-        `
-    SELECT room_id, room_number, room_type, price
-    FROM Rooms
-    WHERE status = 'Available'
-      AND NOT EXISTS (
-        SELECT 1
-        FROM Reservations
-        WHERE Reservations.room_id = Rooms.room_id
-          AND (
-            Reservations.status IS NULL
-            OR LOWER(Reservations.status)
-               NOT IN ('cancelled', 'canceled')
-          )
-          AND check_in < ?
-          AND check_out > ?
-      )
-    ORDER BY price, room_number
-    `,
-        [stay.check_out, stay.check_in]
+    const date = new Date(`${value}T00:00:00Z`);
+
+    if (
+        Number.isNaN(date.getTime()) ||
+        date.toISOString().slice(0, 10) !== value
+    ) {
+        throw new InputError(
+            "Please enter a valid date."
+        );
+    }
+
+    return date;
+}
+
+/* Checks the stay dates and calculates
+   how many nights the guest selected. */
+
+function getStayNights(checkIn, checkOut) {
+    const start = parseDate(checkIn);
+    const end = parseDate(checkOut);
+
+    const nights = Math.round(
+        (end.getTime() - start.getTime()) /
+        (1000 * 60 * 60 * 24)
     );
 
+    if (nights < 1) {
+        throw new InputError(
+            "Check-out must be after check-in."
+        );
+    }
+
+    if (nights > 365) {
+        throw new InputError(
+            "A reservation cannot exceed 365 nights."
+        );
+    }
+
+    return nights;
+}
+
+/* Calculates the total price using cents
+   to avoid problems with decimal rounding. */
+
+function calculateTotal(price, nights) {
+    const cents = Math.round(Number(price) * 100);
+
+    if (!Number.isSafeInteger(cents) || cents < 0) {
+        throw new Error("Invalid room price.");
+    }
+
+    return Number(
+        ((cents * nights) / 100).toFixed(2)
+    );
+}
+
+/* Checks that a room ID is a positive number. */
+
+function validateRoomId(value) {
+    const roomId = Number(value);
+
+    if (!Number.isSafeInteger(roomId) || roomId < 1) {
+        throw new InputError(
+            "Please select a valid room."
+        );
+    }
+
+    return roomId;
+}
+
+/* Wraps async routes so errors are passed
+   to our main error handler. */
+
+function asyncRoute(handler) {
+    return (req, res, next) => {
+        Promise.resolve(handler(req, res, next))
+            .catch(next);
+    };
+}
+
+
+/* ==========================================
+   TEST BACKEND CONNECTION
+
+   This route helps us confirm that the
+   Node.js server is running correctly.
+========================================== */
+
+app.get("/api/health", (req, res) => {
     res.json({
-        rooms: rooms.map((room) => ({
-            ...room,
-            total_price: totalPrice(room.price, stay.nights),
-        })),
+        message: "LUMA Hotel backend is running!"
     });
 });
 
-// Save a guest and reservation together.
-app.post("/api/reservations", async (req, res) => {
-    const data = req.body;
 
-    if (!data || typeof data !== "object" || Array.isArray(data)) {
-        throw new InputError("Send a JSON object.");
-    }
+/* ==========================================
+   TEST MYSQL CONNECTION
 
-    const stay = checkDates(data);
+   This route checks whether the backend
+   can actually communicate with MySQL.
+========================================== */
 
-    if (!Number.isInteger(data.room_id) || data.room_id < 1) {
-        throw new InputError("room_id must be a positive integer.");
-    }
+app.get(
+    "/api/db-health",
+    asyncRoute(async (req, res) => {
+        await pool.query("SELECT 1");
 
-    for (const field of ["first_name", "last_name"]) {
-        if (
-            typeof data[field] !== "string" ||
-            !data[field].trim() ||
-            data[field].trim().length > 50
-        ) {
-            throw new InputError(`Enter a valid ${field}.`);
-        }
-    }
+        res.json({
+            message: "MySQL connection successful!"
+        });
+    })
+);
 
-    if (
-        typeof data.email !== "string" ||
-        data.email.length > 100 ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)
-    ) {
-        throw new InputError("Enter a valid email.");
-    }
 
-    if (
-        data.phone != null &&
-        (typeof data.phone !== "string" || data.phone.length > 20)
-    ) {
-        throw new InputError("Phone must be 20 characters or fewer.");
-    }
+/* ==========================================
+   CREATE CUSTOMER ACCOUNT
 
-    const connection = await db.getConnection();
+   This route receives registration details,
+   checks for duplicates, hashes the password,
+   and saves the account in MySQL.
+========================================== */
 
-    try {
-        await connection.beginTransaction();
+app.post(
+    "/api/accounts",
+    asyncRoute(async (req, res) => {
 
-        // These tables need InnoDB for transactions and room locks.
-        const [tables] = await connection.execute(`
-      SELECT ENGINE AS engine
-      FROM information_schema.TABLES
-      WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME IN ('Guests', 'Rooms', 'Reservations')
-    `);
+        /* Gets the information entered on
+           the Create Account page. */
+
+        const firstName = cleanText(req.body.first_name);
+        const lastName = cleanText(req.body.last_name);
+        const phone = cleanText(req.body.phone);
+        const email = cleanEmail(req.body.email);
+        const password = req.body.password;
+        const confirmPassword = req.body.confirm_password;
+
+        /* Makes sure the required fields
+           are not empty. */
 
         if (
-            tables.length !== 3 ||
-            tables.some((table) => table.engine !== "InnoDB")
+            !firstName ||
+            !lastName ||
+            !email ||
+            typeof password !== "string"
         ) {
-            throw new InputError("All three tables must use InnoDB.");
+            throw new InputError(
+                "Please complete all required fields."
+            );
         }
 
-        // Lock the room while checking and creating the booking.
-        const [rooms] = await connection.execute(
-            `
-      SELECT price, status
-      FROM Rooms
-      WHERE room_id = ?
-      FOR UPDATE
-      `,
-            [data.room_id]
-        );
+        /* Checks the length of the customer's name. */
 
-        if (!rooms.length) {
-            await connection.rollback();
-            return res.status(404).json({ error: "Room not found." });
+        if (
+            firstName.length > 100 ||
+            lastName.length > 100
+        ) {
+            throw new InputError(
+                "The name entered is too long."
+            );
         }
 
-        if (rooms[0].status !== "Available") {
-            await connection.rollback();
-            return res.status(409).json({ error: "Room unavailable." });
+        if (phone.length > 30) {
+            throw new InputError(
+                "The phone number is too long."
+            );
         }
 
-        const [bookings] = await connection.execute(
-            `
-      SELECT reservation_id
-      FROM Reservations
-      WHERE room_id = ?
-        AND (
-          status IS NULL
-          OR LOWER(status) NOT IN ('cancelled', 'canceled')
-        )
-        AND check_in < ?
-        AND check_out > ?
-      FOR UPDATE
-      `,
-            [data.room_id, stay.check_out, stay.check_in]
-        );
+        /* Checks that the email has a valid format. */
 
-        if (bookings.length) {
-            await connection.rollback();
-            return res.status(409).json({ error: "Room already booked." });
+        if (
+            email.length > 255 ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+        ) {
+            throw new InputError(
+                "Please enter a valid email address."
+            );
         }
 
-        const total = totalPrice(rooms[0].price, stay.nights);
+        /* Requires a reasonably strong password. */
 
-        const [guest] = await connection.execute(
-            `
-      INSERT INTO Guests (first_name, last_name, email, phone)
-      VALUES (?, ?, ?, ?)
-      `,
-            [
-                data.first_name.trim(),
-                data.last_name.trim(),
-                data.email.trim(),
-                data.phone?.trim() || null,
-            ]
+        if (password.length < 8) {
+            throw new InputError(
+                "Your password must have at least 8 characters."
+            );
+        }
+
+        if (Buffer.byteLength(password, "utf8") > 72) {
+            throw new InputError(
+                "Your password is too long."
+            );
+        }
+
+        /* If the frontend sends a confirmation
+           password, it must match. */
+
+        if (
+            confirmPassword !== undefined &&
+            password !== confirmPassword
+        ) {
+            throw new InputError(
+                "Passwords do not match."
+            );
+        }
+
+        /* Checks whether the email already
+           exists before creating an account. */
+
+        const [existingAccounts] = await pool.execute(
+            `SELECT account_id
+             FROM Accounts
+             WHERE email = ?
+             LIMIT 1`,
+            [email]
         );
 
-        const [reservation] = await connection.execute(
-            `
-      INSERT INTO Reservations
-      (guest_id, room_id, check_in, check_out, total_price, status)
-      VALUES (?, ?, ?, ?, ?, 'Confirmed')
-      `,
-            [
-                guest.insertId,
-                data.room_id,
-                stay.check_in,
-                stay.check_out,
-                total,
-            ]
+        if (existingAccounts.length > 0) {
+            return res.status(409).json({
+                error: "An account with this email already exists."
+            });
+        }
+
+        /* Hashes the password so the real
+           password is never stored in MySQL. */
+
+        const passwordHash = await bcrypt.hash(
+            password,
+            12
         );
 
-        await connection.commit();
+        /* Saves the new account.
+           The UNIQUE email rule in MySQL
+           also protects against duplicates. */
+
+        let result;
+
+        try {
+            [result] = await pool.execute(
+                `INSERT INTO Accounts
+                 (first_name, last_name, phone, email, password_hash)
+                 VALUES (?, ?, ?, ?, ?)`,
+                [
+                    firstName,
+                    lastName,
+                    phone || null,
+                    email,
+                    passwordHash
+                ]
+            );
+        } catch (error) {
+
+            /* MySQL error 1062 means the
+               email is already registered. */
+
+            if (error.code === "ER_DUP_ENTRY") {
+                return res.status(409).json({
+                    error: "An account with this email already exists."
+                });
+            }
+
+            throw error;
+        }
+
+        /* Sends a success message back
+           to the Create Account page. */
 
         res.status(201).json({
-            message: "Reservation created!",
-            reservation_id: reservation.insertId,
-            total_price: total,
+            message: "Account created successfully!",
+            account_id: result.insertId
         });
-    } catch (error) {
-        await connection.rollback();
-        throw error;
-    } finally {
-        connection.release();
-    }
-});
+    })
+);
 
-// Return clear errors without exposing database details.
+
+/* ==========================================
+   VIEW HOTEL ROOMS
+
+   Gets all rooms from MySQL, including
+   their room numbers, types, and prices.
+========================================== */
+
+app.get(
+    "/api/rooms",
+    asyncRoute(async (req, res) => {
+        const [rooms] = await pool.query(
+            `SELECT
+                room_id,
+                room_number,
+                room_type,
+                price,
+                status
+             FROM Rooms
+             ORDER BY price, room_number`
+        );
+
+        res.json({ rooms });
+    })
+);
+
+
+/* ==========================================
+   SEARCH AVAILABLE ROOMS
+
+   Checks which rooms are free during
+   the dates selected by the guest.
+
+   A room is unavailable if it already has
+   a non-cancelled overlapping reservation.
+========================================== */
+
+app.get(
+    "/api/availability",
+    asyncRoute(async (req, res) => {
+        const checkIn = req.query.check_in;
+        const checkOut = req.query.check_out;
+
+        const nights = getStayNights(
+            checkIn,
+            checkOut
+        );
+
+        /* Finds rooms marked Available that
+           have no conflicting reservations. */
+
+        const [rooms] = await pool.execute(
+            `SELECT
+                r.room_id,
+                r.room_number,
+                r.room_type,
+                r.price,
+                r.status
+             FROM Rooms r
+             WHERE r.status = 'Available'
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM Reservations b
+                   WHERE b.room_id = r.room_id
+                     AND b.status <> 'Cancelled'
+                     AND b.check_in < ?
+                     AND b.check_out > ?
+               )
+             ORDER BY r.price, r.room_number`,
+            [checkOut, checkIn]
+        );
+
+        /* Adds the total cost for the
+           selected number of nights. */
+
+        const availableRooms = rooms.map((room) => ({
+            ...room,
+            total_price: calculateTotal(
+                room.price,
+                nights
+            )
+        }));
+
+        res.json({
+            check_in: checkIn,
+            check_out: checkOut,
+            nights,
+            rooms: availableRooms
+        });
+    })
+);
+
+
+/* ==========================================
+   CREATE A HOTEL RESERVATION
+
+   Saves a guest and reservation in MySQL.
+
+   A transaction and room lock help prevent
+   two people from booking the same room
+   for overlapping dates.
+========================================== */
+
+app.post(
+    "/api/reservations",
+    asyncRoute(async (req, res) => {
+
+        /* Gets the guest information and
+           room selection from the website. */
+
+        const firstName = cleanText(req.body.first_name);
+        const lastName = cleanText(req.body.last_name);
+        const email = cleanEmail(req.body.email);
+
+        const roomId = validateRoomId(req.body.room_id);
+
+        const checkIn = req.body.check_in;
+        const checkOut = req.body.check_out;
+
+        /* Checks the required guest information. */
+
+        if (
+            !firstName ||
+            !lastName ||
+            !email
+        ) {
+            throw new InputError(
+                "Please enter your name and email."
+            );
+        }
+
+        if (
+            firstName.length > 100 ||
+            lastName.length > 100 ||
+            email.length > 255 ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+        ) {
+            throw new InputError(
+                "Please enter valid guest information."
+            );
+        }
+
+        const nights = getStayNights(
+            checkIn,
+            checkOut
+        );
+
+        /* Gets a database connection so all
+           reservation steps use one transaction. */
+
+        const connection = await pool.getConnection();
+
+        let transactionStarted = false;
+
+        try {
+
+            /* Checks that our tables support
+               transactions and row locking. */
+
+            const [tableInfo] = await connection.query(
+                `SELECT TABLE_NAME, ENGINE
+                 FROM information_schema.TABLES
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME IN ('Rooms', 'Guests', 'Reservations')`
+            );
+
+            if (
+                tableInfo.length !== 3 ||
+                tableInfo.some(
+                    (table) =>
+                        table.ENGINE.toUpperCase() !== "INNODB"
+                )
+            ) {
+                throw new Error(
+                    "Hotel tables must use InnoDB."
+                );
+            }
+
+            /* Starts the transaction. */
+
+            await connection.beginTransaction();
+            transactionStarted = true;
+
+            /* Locks the selected room while
+               checking and saving the booking. */
+
+            const [selectedRooms] = await connection.execute(
+                `SELECT
+                    room_id,
+                    room_number,
+                    room_type,
+                    price,
+                    status
+                 FROM Rooms
+                 WHERE room_id = ?
+                 FOR UPDATE`,
+                [roomId]
+            );
+
+            if (selectedRooms.length === 0) {
+                throw new InputError(
+                    "The selected room does not exist."
+                );
+            }
+
+            const room = selectedRooms[0];
+
+            if (room.status !== "Available") {
+                return await rollbackAndRespond(
+                    connection,
+                    res,
+                    409,
+                    "This room is currently unavailable."
+                );
+            }
+
+            /* Checks for reservations that overlap
+               the dates the guest selected. */
+
+            const [conflicts] = await connection.execute(
+                `SELECT reservation_id
+                 FROM Reservations
+                 WHERE room_id = ?
+                   AND status <> 'Cancelled'
+                   AND check_in < ?
+                   AND check_out > ?
+                 LIMIT 1`,
+                [roomId, checkOut, checkIn]
+            );
+
+            if (conflicts.length > 0) {
+                return await rollbackAndRespond(
+                    connection,
+                    res,
+                    409,
+                    "This room is already booked for those dates."
+                );
+            }
+
+            /* Calculates the reservation price. */
+
+            const totalPrice = calculateTotal(
+                room.price,
+                nights
+            );
+
+            /* Saves the guest information. */
+
+            const [guestResult] = await connection.execute(
+                `INSERT INTO Guests
+                 (first_name, last_name, email)
+                 VALUES (?, ?, ?)`,
+                [firstName, lastName, email]
+            );
+
+            /* Saves the reservation using the
+               guest ID and selected room ID. */
+
+            const [reservationResult] =
+                await connection.execute(
+                    `INSERT INTO Reservations
+                     (guest_id, room_id, check_in, check_out,
+                      total_price, status)
+                     VALUES (?, ?, ?, ?, ?, ?)`,
+                    [
+                        guestResult.insertId,
+                        roomId,
+                        checkIn,
+                        checkOut,
+                        totalPrice,
+                        "Confirmed"
+                    ]
+                );
+
+            /* Saves both records together. */
+
+            await connection.commit();
+            transactionStarted = false;
+
+            /* Sends the reservation details
+               back to the booking page. */
+
+            res.status(201).json({
+                message: "Reservation confirmed!",
+                reservation_id: reservationResult.insertId,
+                room_id: roomId,
+                room_number: room.room_number,
+                room_type: room.room_type,
+                check_in: checkIn,
+                check_out: checkOut,
+                nights,
+                total_price: totalPrice
+            });
+
+        } catch (error) {
+
+            /* If something goes wrong, undo
+               any unfinished database changes. */
+
+            if (transactionStarted) {
+                await connection.rollback();
+            }
+
+            throw error;
+
+        } finally {
+
+            /* Releases the connection so another
+               guest can use it afterward. */
+
+            connection.release();
+        }
+    })
+);
+
+
+/* Sends an error response after undoing
+   an unsuccessful reservation transaction. */
+
+async function rollbackAndRespond(
+    connection,
+    res,
+    status,
+    message
+) {
+    await connection.rollback();
+
+    return res.status(status).json({
+        error: message
+    });
+}
+
+
+/* ==========================================
+   ERROR HANDLING
+
+   This section sends helpful messages when
+   information is invalid or MySQL has a problem.
+========================================== */
+
 app.use((error, req, res, next) => {
-    if (error instanceof InputError) {
-        return res.status(400).json({ error: error.message });
-    }
+
+    /* Handles incorrect JSON sent by the frontend. */
 
     if (error.type === "entity.parse.failed") {
-        return res.status(400).json({ error: "Invalid JSON." });
+        return res.status(400).json({
+            error: "Invalid request data."
+        });
     }
+
+    /* Handles requests that are too large. */
 
     if (error.type === "entity.too.large") {
-        return res.status(413).json({ error: "Request too large." });
+        return res.status(413).json({
+            error: "Request data is too large."
+        });
     }
 
-    console.error("Backend error:", error.code || error.name);
+    /* Handles missing or incorrect form information. */
+
+    if (error instanceof InputError) {
+        return res.status(error.status).json({
+            error: error.message
+        });
+    }
+
+    /* Logs database errors in the terminal
+       without exposing database details to guests. */
+
+    console.error(
+        "Backend error:",
+        error.code || error.message
+    );
+
+    /* Sends a general error message
+       if the database request fails. */
 
     res.status(503).json({
-        error: "Check your MySQL connection and imported tables.",
+        error: "The hotel service is temporarily unavailable. Please try again."
     });
 });
 
-app.listen(5001, "127.0.0.1", () => {
-    console.log("Backend running at http://localhost:5001");
+
+/* ==========================================
+   START THE SERVER
+
+   Runs our backend on port 5001.
+   The React frontend runs separately on 5173.
+========================================== */
+
+app.listen(PORT, "127.0.0.1", () => {
+    console.log(
+        `LUMA Hotel backend running at http://localhost:${PORT}`
+    );
 });
