@@ -1,0 +1,353 @@
+/* ==========================================
+   LUMA HOTEL - ADMIN DASHBOARD
+   Elegant hotel management interface
+========================================== */
+
+.luma-admin {
+    --dark: #29261f;
+    --brown: #40382f;
+    --gold: #a48a6a;
+    --cream: #f5f1e9;
+    --light: #faf9f6;
+    --border: #e8e1d6;
+    --muted: #8b8479;
+
+    min-height: 100vh;
+    padding: 0;
+    margin: 0;
+    background: #f6f4ef;
+    color: var(--dark);
+    font-family: Arial, sans-serif;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.luma-admin *,
+.luma-admin *::before,
+.luma-admin *::after {
+    box-sizing: border-box;
+}
+
+/* ==========================================
+   PAGE HEADER
+========================================== */
+
+.luma-admin > h1 {
+    background: var(--dark);
+    color: #f5f1e9;
+    font-family: Georgia, serif;
+    font-size: 34px;
+    font-weight: normal;
+    letter-spacing: 2px;
+    margin: 0;
+    padding: 38px 6% 32px;
+}
+
+.luma-admin > p {
+    background: var(--dark);
+    color: #c8bca9;
+    margin: 0;
+    padding: 0 6% 30px;
+    font-size: 12px;
+}
+
+.luma-admin > p strong {
+    color: white;
+    font-weight: normal;
+}
+
+.luma-admin > p a {
+    color: #c7a980;
+    text-decoration: none;
+    margin-left: 12px;
+    transition: color 0.2s ease;
+}
+
+.luma-admin > p a:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+/* ==========================================
+   OVERVIEW COUNTERS
+========================================== */
+
+.luma-admin-counters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+    padding: 35px 6%;
+    max-width: 1500px;
+    margin: 0 auto;
+}
+
+.luma-admin-counters p {
+    background: white;
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--gold);
+    padding: 25px 28px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 3px 12px rgba(41, 38, 31, 0.025);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.luma-admin-counters p:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(41, 38, 31, 0.07);
+}
+
+.luma-admin-counters strong {
+    display: block;
+    color: var(--dark);
+    font-family: Georgia, serif;
+    font-size: 35px;
+    font-weight: normal;
+    margin-bottom: 9px;
+}
+
+/* ==========================================
+   NAVIGATION TABS
+========================================== */
+
+.luma-admin-tabs {
+    display: flex;
+    gap: 5px;
+    max-width: 1500px;
+    margin: 5px auto 0;
+    padding: 0 6%;
+    border-bottom: 1px solid var(--border);
+}
+
+.luma-admin-tabs button {
+    position: relative;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 16px 25px;
+    color: #827b70;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.7px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.luma-admin-tabs button:hover {
+    color: var(--dark);
+    background: rgba(164, 138, 106, 0.06);
+}
+
+.luma-admin-tabs button:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: -3px;
+}
+
+.luma-admin-tabs button:first-child {
+    border-left: 1px solid transparent;
+}
+
+/* ==========================================
+   TABLE CONTAINERS
+========================================== */
+
+.luma-admin-table-wrap {
+    max-width: 1380px;
+    margin: 28px auto 60px;
+    padding: 30px;
+    background: white;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 18px rgba(41, 38, 31, 0.035);
+}
+
+.luma-admin-table-wrap h2 {
+    color: var(--dark);
+    font-family: Georgia, serif;
+    font-size: 25px;
+    font-weight: normal;
+    margin: 0 0 25px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+/* ==========================================
+   TABLE DESIGN
+========================================== */
+
+.luma-admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 12px;
+}
+
+.luma-admin-table thead {
+    background: var(--cream);
+}
+
+.luma-admin-table th {
+    color: #71695e;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 1.1px;
+    padding: 16px 15px;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+}
+
+.luma-admin-table td {
+    padding: 17px 15px;
+    color: #625d54;
+    border-bottom: 1px solid #f0ede7;
+    vertical-align: middle;
+}
+
+.luma-admin-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.luma-admin-table tbody tr:hover {
+    background: #fbfaf7;
+}
+
+.luma-admin-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Make names and IDs stand out. */
+
+.luma-admin-table td:first-child {
+    color: var(--gold);
+    font-weight: bold;
+}
+
+.luma-admin-table td:nth-child(2) {
+    color: var(--dark);
+    font-weight: 600;
+}
+
+/* ==========================================
+   RESERVATION STATUS
+========================================== */
+
+.luma-admin-table td:nth-child(10) {
+    font-weight: bold;
+}
+
+/* ==========================================
+   LOADING AND ERROR STATES
+========================================== */
+
+.luma-admin > h1 ~ p[role="alert"] {
+    background: white;
+    color: #a34d47 !important;
+    padding: 30px 6%;
+    font-size: 13px;
+}
+
+.luma-admin > h1 ~ p:has(a) {
+    line-height: 2;
+}
+
+.luma-admin > h1 ~ p:has(a) a {
+    display: inline-block;
+    margin-top: 12px;
+}
+
+.luma-admin > h1 ~ p:not([role="alert"]) {
+    padding-bottom: 30px;
+}
+
+/* ==========================================
+   RESPONSIVE TABLES
+========================================== */
+
+@media (max-width: 1200px) {
+    .luma-admin-table-wrap {
+        margin-left: 25px;
+        margin-right: 25px;
+        overflow-x: auto;
+    }
+
+    .luma-admin-table {
+        min-width: 950px;
+    }
+}
+
+@media (max-width: 750px) {
+    .luma-admin > h1 {
+        padding: 30px 25px 20px;
+        font-size: 28px;
+    }
+
+    .luma-admin > p {
+        padding: 0 25px 25px;
+    }
+
+    .luma-admin-counters {
+        grid-template-columns: 1fr;
+        padding: 25px;
+        gap: 12px;
+    }
+
+    .luma-admin-counters p {
+        padding: 18px 22px;
+    }
+
+    .luma-admin-counters strong {
+        font-size: 29px;
+    }
+
+    .luma-admin-tabs {
+        padding: 0 20px;
+        overflow-x: auto;
+    }
+
+    .luma-admin-tabs button {
+        padding: 15px 17px;
+        white-space: nowrap;
+    }
+
+    .luma-admin-table-wrap {
+        margin: 20px 15px 35px;
+        padding: 20px;
+    }
+
+    .luma-admin-table-wrap h2 {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 450px) {
+    .luma-admin-tabs button {
+        font-size: 11px;
+        padding: 14px 12px;
+    }
+
+    .luma-admin-table-wrap {
+        padding: 15px;
+    }
+}
+
+/* Admin logout button */
+.luma-admin-logout {
+    position: absolute;
+    top: 38px;
+    right: 6%;
+    padding: 11px 22px;
+    background: transparent;
+    border: 1px solid #a48a6a;
+    color: #f5f1e9;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.luma-admin-logout:hover {
+    background: #a48a6a;
+    color: #29261f;
+}

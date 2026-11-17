@@ -1,4 +1,14 @@
-node_modules/
+# Environment variables and secrets
 .env
-.DS_Store
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build output
 dist/
+dist-ssr/
+
+# Local files
+*.local

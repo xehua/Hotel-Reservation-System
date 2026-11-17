@@ -1,12 +1,54 @@
-
+// FILE: App.jsx
 import "./App.css";
 import CreateAccount from "./CreateAccount.jsx";
 import BookingPage from "./BookingPage.jsx";
+import SignIn from "./SignIn.jsx";
+import AdminDashboard from "./AdminDashboard.jsx";
+import { useState, useEffect } from "react";
 
 function App() {
+
+  const [currentAccount, setCurrentAccount] = useState(null);
+
+  // Checks whether someone is signed in whenever the app loads. 
+  // It also means an admin who refreshes the homepage won't lose their dashboard button.
+  useEffect(() => {
+    async function checkAccount() {
+        try {
+            const response = await fetch("http://localhost:5001/api/me", {
+                credentials: "include"
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setCurrentAccount(data.account);
+            }
+        } catch (error) {
+            console.error("Could not check signed-in account:", error);
+        }
+    }
+
+    checkAccount();
+}, []);
+
   // Separate booking page
   if (window.location.pathname === "/booking") {
     return <BookingPage />;
+  }
+
+  // Separate sign-in page
+  if (window.location.pathname === "/sign-in") {
+    return (
+        <main className="account-page">
+            <a href="/" className="back-home">← Back to Home</a>
+
+            <SignIn
+                onSignedIn={(account) => setCurrentAccount(account)}
+            />
+
+        </main>
+    );
   }
 
   // Separate create account page
@@ -19,6 +61,10 @@ function App() {
           <CreateAccount />
         </main>
     );
+  }
+
+  if (window.location.pathname === "/admin") {
+    return <AdminDashboard />;
   }
 
   // Main LUMA Hotel homepage
@@ -40,20 +86,29 @@ function App() {
           </div>
 
           <div className="luma-nav-actions">
-            <a
-                href="/create-account"
-                className="luma-account-button"
-            >
-              CREATE ACCOUNT
+
+            {currentAccount?.is_admin && (
+                <a href="/admin" className="luma-admin-button">
+                    ADMIN DASHBOARD
+                </a>
+            )}
+
+            {!currentAccount && (
+                <>
+                    <a href="/sign-in" className="luma-account-button">
+                        SIGN IN
             </a>
 
-            <a
-                href="/booking"
-                className="luma-book-button"
-            >
-              BOOK NOW
+                    <a href="/create-account" className="luma-account-button">
+                        CREATE ACCOUNT
+                    </a>
+                </>
+            )}  
+
+            <a href="/booking" className="luma-book-button">
+                BOOK NOW
             </a>
-          </div>
+        </div>
         </nav>
 
         {/* Hero */}
@@ -160,15 +215,15 @@ function App() {
               </div>
             </div>
 
-            {/* Luxury Suite */}
+            {/* Premium Suite */}
             <div className="room-card">
               <img
                   src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b"
-                  alt="Luxury Suite"
+                  alt="Premium Suite"
               />
 
               <div className="room-info">
-                <h3>Luxury Suite</h3>
+                <h3>Premium Suite</h3>
 
                 <p>
                   Experience luxury and additional space

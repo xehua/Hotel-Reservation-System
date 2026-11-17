@@ -1,5 +1,6 @@
-
 /* ==========================================
+   FILE: App.css
+   DESCRIPTION: Main stylesheet for the LUMA Hotel website.
    LUMA HOTEL - WEBSITE STYLING
 
    This file controls how our hotel website
@@ -1318,4 +1319,20 @@ footer p {
   .luma-room-filters select {
     width: 100%;
   }
+}
+
+  .luma-admin-button {
+    display: inline-block;
+    padding: 12px 18px;
+    background-color: #a48a6a;
+    color: #fff;
+    text-decoration: none;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    font-family: Arial, sans-serif;
+    transition: background-color 0.3s ease;
+}
+
+  .luma-admin-button:hover {
+    background-color: #8c7254;
 }

@@ -1,4 +1,4 @@
-
+// FILE: BookingPage.jsx
 import BookingForm from "./BookingForm.jsx";
 import "./App.css";
 
